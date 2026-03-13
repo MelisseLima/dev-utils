@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 🌙 good-night — restore your dev environment: spin up docker-compose projects
+# 🐳 dockerup — restore your dev environment: spin up docker-compose projects
 set -euo pipefail
 
 CYAN='\033[0;36m'
@@ -10,8 +10,8 @@ NC='\033[0m'
 
 banner() {
   echo ""
-  echo -e "${CYAN}  🌙  G O O D   N I G H T  🌙${NC}"
-  echo -e "${YELLOW}  Tucking your dev environment back in...${NC}"
+  echo -e "${CYAN}  🐳  D O C K E R U P  🐳${NC}"
+  echo -e "${YELLOW}  Spinning up your dev environment...${NC}"
   echo ""
 }
 

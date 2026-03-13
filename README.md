@@ -29,7 +29,7 @@ That's it. All commands are now available globally.
 | Command | Description |
 |---------|-------------|
 | `good-morning` | Stop **all** Docker containers, remove images, volumes, networks, and run a full system prune. A clean slate. |
-| `good-night [dir ...]` | Find `docker-compose.yml` files and spin up services. Pass project directories as arguments or run in the current directory. |
+| `dockerup [dir ...]` | Find `docker-compose.yml` files and spin up services. Pass project directories as arguments or run in the current directory. |
 | `port-who <port>` | Show which process is using a specific port. |
 | `killport <port> [...]` | Kill whatever is running on one or more ports. |
 
@@ -37,7 +37,7 @@ That's it. All commands are now available globally.
 
 ```bash
 good-morning                     # nuke all Docker resources
-good-night ~/projects/api        # spin up a specific project
+dockerup ~/projects/api          # spin up a specific project
 port-who 3000                    # who's on port 3000?
 killport 3000 8080               # free up ports 3000 and 8080
 ```
