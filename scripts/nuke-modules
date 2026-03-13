@@ -1,0 +1,42 @@
+#!/usr/bin/env bash
+# 💣 nuke-modules — recursively remove node_modules, dist, .next, __pycache__, etc.
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+TARGET="${1:-.}"
+
+NUKE_DIRS=("node_modules" ".next" "dist" "build" "__pycache__" ".pytest_cache" ".mypy_cache" ".turbo" ".parcel-cache" ".nuxt" ".output" ".cache")
+
+echo ""
+echo -e "${CYAN}  💣  N U K E   M O D U L E S${NC}"
+echo -e "${YELLOW}  Searching in: $(cd "$TARGET" && pwd)${NC}"
+echo ""
+
+total_size=0
+total_count=0
+
+for dir_name in "${NUKE_DIRS[@]}"; do
+  while IFS= read -r found; do
+    [[ -z "$found" ]] && continue
+    size=$(du -sh "$found" 2>/dev/null | cut -f1 || echo "?")
+    echo -e "${RED}  ✗ Removing $found ($size)${NC}"
+    rm -rf "$found"
+    total_count=$((total_count + 1))
+  done < <(find "$TARGET" -type d -name "$dir_name" -not -path "*/.git/*" 2>/dev/null)
+done
+
+if [[ "$total_count" -eq 0 ]]; then
+  echo -e "${GREEN}  ✓ Already clean! Nothing to nuke.${NC}"
+else
+  echo ""
+  echo -e "${GREEN}  ✓ Nuked $total_count directories.${NC}"
+fi
+
+echo ""
+echo -e "${CYAN}  ✅  Your disk thanks you. 💾${NC}"
+echo ""

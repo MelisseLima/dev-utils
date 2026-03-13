@@ -1,0 +1,75 @@
+#!/usr/bin/env bash
+# 📝 note — quick timestamped notes for your dev brain
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+NOTES_DIR="$HOME/dev-notes"
+mkdir -p "$NOTES_DIR"
+
+TODAY=$(date +%Y-%m-%d)
+NOTES_FILE="$NOTES_DIR/$TODAY.md"
+TIMESTAMP=$(date +%H:%M:%S)
+
+# No arguments: show today's notes
+if [[ $# -eq 0 ]]; then
+  echo ""
+  echo -e "${CYAN}  📝  D E V   N O T E S${NC}"
+  echo ""
+
+  if [[ -f "$NOTES_FILE" ]]; then
+    echo -e "${GREEN}  Notes for $TODAY:${NC}"
+    echo ""
+    cat "$NOTES_FILE"
+  else
+    echo -e "${YELLOW}  No notes for today yet.${NC}"
+    echo -e "  Usage: note \"your note here\""
+    echo -e "  Usage: note --list      (show all note files)"
+    echo -e "  Usage: note --search <term>"
+  fi
+  echo ""
+  exit 0
+fi
+
+# --list: show all note files
+if [[ "$1" == "--list" ]]; then
+  echo ""
+  echo -e "${CYAN}  📝  All note files:${NC}"
+  echo ""
+  ls -1 "$NOTES_DIR"/*.md 2>/dev/null | while read -r f; do
+    count=$(grep -c "^- " "$f" 2>/dev/null || echo "0")
+    echo -e "${GREEN}  $(basename "$f")  ($count notes)${NC}"
+  done
+  echo ""
+  exit 0
+fi
+
+# --search: search notes
+if [[ "$1" == "--search" ]]; then
+  if [[ $# -lt 2 ]]; then
+    echo -e "${YELLOW}Usage: note --search <term>${NC}"
+    exit 1
+  fi
+  echo ""
+  echo -e "${CYAN}  🔍  Searching notes for: $2${NC}"
+  echo ""
+  grep -rn --color=always "$2" "$NOTES_DIR"/ 2>/dev/null || echo -e "${YELLOW}  No matches found.${NC}"
+  echo ""
+  exit 0
+fi
+
+# Otherwise: add a note
+NOTE_TEXT="$*"
+
+# Create file with header if it doesn't exist
+if [[ ! -f "$NOTES_FILE" ]]; then
+  echo "# Dev Notes — $TODAY" > "$NOTES_FILE"
+  echo "" >> "$NOTES_FILE"
+fi
+
+echo "- [$TIMESTAMP] $NOTE_TEXT" >> "$NOTES_FILE"
+
+echo -e "${GREEN}  ✓ Note saved → $NOTES_FILE${NC}"

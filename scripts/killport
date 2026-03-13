@@ -1,0 +1,34 @@
+#!/usr/bin/env bash
+# 💀 killport — kill whatever is running on a port
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+if [[ $# -eq 0 ]]; then
+  echo -e "${YELLOW}Usage: killport <port> [port2 port3 ...]${NC}"
+  echo -e "  Example: killport 3000 8080"
+  exit 1
+fi
+
+echo ""
+echo -e "${CYAN}  💀  K I L L P O R T${NC}"
+echo ""
+
+for PORT in "$@"; do
+  pids=$(lsof -t -i :"$PORT" 2>/dev/null || true)
+
+  if [[ -z "$pids" ]]; then
+    echo -e "${YELLOW}  ⚠ Port $PORT — nothing running.${NC}"
+  else
+    for pid in $pids; do
+      name=$(ps -p "$pid" -o comm= 2>/dev/null || echo "unknown")
+      echo -e "${GREEN}  ✓ Port $PORT — killing $name (PID $pid)${NC}"
+      kill -9 "$pid" 2>/dev/null || true
+    done
+  fi
+done
+echo ""

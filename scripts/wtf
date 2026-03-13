@@ -1,0 +1,109 @@
+#!/usr/bin/env bash
+# 🤬 wtf — show recent error logs for the current project
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+LINES="${1:-30}"
+
+echo ""
+echo -e "${CYAN}  🤬  W T F${NC}"
+echo -e "${YELLOW}  Let's see what went wrong...${NC}"
+echo ""
+
+step() {
+  echo -e "${GREEN}▸ $1${NC}"
+}
+
+found_something=false
+
+# --- Docker Compose logs ---
+if [[ -f "docker-compose.yml" || -f "docker-compose.yaml" || -f "compose.yml" || -f "compose.yaml" ]]; then
+  step "Docker Compose logs (last $LINES lines with errors):"
+  echo ""
+  (docker compose logs --tail="$LINES" 2>/dev/null || docker-compose logs --tail="$LINES" 2>/dev/null) | \
+    grep -iE "error|exception|fatal|panic|failed|traceback|critical" --color=always || \
+    echo -e "${GREEN}    No errors in docker compose logs.${NC}"
+  echo ""
+  found_something=true
+fi
+
+# --- Next.js ---
+if [[ -f ".next/trace" || -d ".next" ]]; then
+  step "Next.js: checking for build errors..."
+  if [[ -f ".next/BUILD_ID" ]]; then
+    echo -e "${GREEN}    Last build seems OK (BUILD_ID exists).${NC}"
+  else
+    echo -e "${RED}    No BUILD_ID found — last build may have failed.${NC}"
+  fi
+  found_something=true
+fi
+
+# --- npm/yarn/pnpm debug logs ---
+log_files=$(find . -maxdepth 1 -name "npm-debug.log*" -o -name "yarn-error.log" -o -name "pnpm-debug.log" 2>/dev/null || true)
+if [[ -n "$log_files" ]]; then
+  for log in $log_files; do
+    step "$(basename "$log") (last $LINES lines):"
+    echo ""
+    tail -n "$LINES" "$log"
+    echo ""
+  done
+  found_something=true
+fi
+
+# --- Python tracebacks ---
+if [[ -f "requirements.txt" || -f "pyproject.toml" || -f "Pipfile" ]]; then
+  step "Searching for Python tracebacks in .py files..."
+  echo ""
+  grep -rn "Traceback\|raise \|Exception\|Error:" --include="*.py" --color=always -l 2>/dev/null | head -10 || \
+    echo -e "${GREEN}    No Python tracebacks found in source files.${NC}"
+  echo ""
+  found_something=true
+fi
+
+# --- Laravel logs ---
+if [[ -f "artisan" && -d "storage/logs" ]]; then
+  step "Laravel logs (last $LINES lines):"
+  echo ""
+  latest_log=$(ls -t storage/logs/laravel*.log 2>/dev/null | head -1)
+  if [[ -n "$latest_log" ]]; then
+    tail -n "$LINES" "$latest_log" | grep -iE "error|exception|fatal|critical" --color=always || \
+      echo -e "${GREEN}    No recent errors in Laravel logs.${NC}"
+  fi
+  echo ""
+  found_something=true
+fi
+
+# --- Rails logs ---
+if [[ -f "Gemfile" && -d "log" ]]; then
+  step "Rails logs (last $LINES lines from development.log):"
+  echo ""
+  if [[ -f "log/development.log" ]]; then
+    tail -n "$LINES" "log/development.log" | grep -iE "error|exception|fatal|rollback" --color=always || \
+      echo -e "${GREEN}    No recent errors in Rails logs.${NC}"
+  fi
+  echo ""
+  found_something=true
+fi
+
+# --- Generic: recent log files ---
+if [[ "$found_something" == false ]]; then
+  step "Looking for any recent log files..."
+  echo ""
+  recent_logs=$(find . -maxdepth 3 -name "*.log" -mmin -60 -not -path "*/node_modules/*" -not -path "*/.git/*" 2>/dev/null | head -5)
+  if [[ -n "$recent_logs" ]]; then
+    for log in $recent_logs; do
+      echo -e "${YELLOW}  $log:${NC}"
+      tail -n 10 "$log" | grep -iE "error|exception|fatal|warn" --color=always || true
+      echo ""
+    done
+  else
+    echo -e "${GREEN}    No recent log files found. Maybe it's not that bad? 🤷${NC}"
+  fi
+fi
+
+echo ""

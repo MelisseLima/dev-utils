@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+# 🧽 cleanup — purge caches from Homebrew, npm, pip, Docker, yarn, pnpm
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+NC='\033[0m'
+
+echo ""
+echo -e "${CYAN}  🧽  C L E A N U P${NC}"
+echo -e "${YELLOW}  Sweeping all the caches...${NC}"
+echo ""
+
+step() {
+  echo -e "${GREEN}▸ $1${NC}"
+}
+
+warn() {
+  echo -e "${YELLOW}  ⚠ $1${NC}"
+}
+
+freed_note() {
+  echo -e "${GREEN}    done.${NC}"
+}
+
+# --- Homebrew ---
+if command -v brew &>/dev/null; then
+  step "Homebrew: cleaning up..."
+  brew cleanup --prune=all -s 2>/dev/null
+  rm -rf "$(brew --cache)" 2>/dev/null || true
+  freed_note
+else
+  warn "Homebrew not found — skipping."
+fi
+
+# --- npm ---
+if command -v npm &>/dev/null; then
+  step "npm: clearing cache..."
+  npm cache clean --force 2>/dev/null
+  freed_note
+else
+  warn "npm not found — skipping."
+fi
+
+# --- yarn ---
+if command -v yarn &>/dev/null; then
+  step "yarn: clearing cache..."
+  yarn cache clean 2>/dev/null
+  freed_note
+else
+  warn "yarn not found — skipping."
+fi
+
+# --- pnpm ---
+if command -v pnpm &>/dev/null; then
+  step "pnpm: clearing store..."
+  pnpm store prune 2>/dev/null
+  freed_note
+else
+  warn "pnpm not found — skipping."
+fi
+
+# --- pip ---
+if command -v pip3 &>/dev/null; then
+  step "pip: clearing cache..."
+  pip3 cache purge 2>/dev/null || pip cache purge 2>/dev/null || true
+  freed_note
+elif command -v pip &>/dev/null; then
+  step "pip: clearing cache..."
+  pip cache purge 2>/dev/null || true
+  freed_note
+else
+  warn "pip not found — skipping."
+fi
+
+# --- Docker ---
+if command -v docker &>/dev/null; then
+  step "Docker: pruning dangling images and build cache..."
+  docker system prune -f 2>/dev/null || true
+  docker builder prune -f 2>/dev/null || true
+  freed_note
+else
+  warn "Docker not found — skipping."
+fi
+
+# --- macOS system caches ---
+if [[ "$(uname)" == "Darwin" ]]; then
+  step "macOS: clearing user caches..."
+  rm -rf ~/Library/Caches/com.apple.dt.Xcode 2>/dev/null || true
+  rm -rf ~/Library/Caches/CocoaPods 2>/dev/null || true
+  rm -rf ~/Library/Caches/typescript 2>/dev/null || true
+  freed_note
+fi
+
+# --- Trash (optional: empty Trash on macOS) ---
+if [[ "$(uname)" == "Darwin" ]]; then
+  TRASH_COUNT=$(ls -1 ~/.Trash 2>/dev/null | wc -l | tr -d ' ')
+  if [[ "$TRASH_COUNT" -gt 0 ]]; then
+    step "Emptying Trash ($TRASH_COUNT items)..."
+    rm -rf ~/.Trash/* 2>/dev/null || true
+    freed_note
+  fi
+fi
+
+echo ""
+echo -e "${CYAN}  ✅  All caches cleaned! Your disk is breathing easier. 💨${NC}"
+echo ""

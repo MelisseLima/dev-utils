@@ -1,0 +1,68 @@
+#!/usr/bin/env bash
+# 🧹 git-nuke — clean up merged branches and prune remotes
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+echo ""
+echo -e "${CYAN}  🧹  G I T   N U K E${NC}"
+echo -e "${YELLOW}  Cleaning up your branch mess...${NC}"
+echo ""
+
+# Detect default branch
+DEFAULT_BRANCH=$(git symbolic-ref refs/remotes/origin/HEAD 2>/dev/null | sed 's@^refs/remotes/origin/@@' || echo "")
+if [[ -z "$DEFAULT_BRANCH" ]]; then
+  # Fallback: check if main or master exists
+  if git show-ref --verify --quiet refs/heads/main 2>/dev/null; then
+    DEFAULT_BRANCH="main"
+  elif git show-ref --verify --quiet refs/heads/master 2>/dev/null; then
+    DEFAULT_BRANCH="master"
+  else
+    echo -e "${RED}  ✗ Could not detect default branch. Are you in a git repo?${NC}"
+    exit 1
+  fi
+fi
+
+echo -e "${GREEN}▸ Default branch: $DEFAULT_BRANCH${NC}"
+
+# Switch to default branch
+current=$(git branch --show-current 2>/dev/null || true)
+if [[ "$current" != "$DEFAULT_BRANCH" ]]; then
+  echo -e "${GREEN}▸ Switching to $DEFAULT_BRANCH...${NC}"
+  git checkout "$DEFAULT_BRANCH" --quiet
+fi
+
+# Pull latest
+echo -e "${GREEN}▸ Pulling latest...${NC}"
+git pull --quiet
+
+# Prune remote tracking branches
+echo -e "${GREEN}▸ Pruning remote tracking branches...${NC}"
+git fetch --prune --quiet
+
+# Delete local branches that are already merged
+merged_branches=$(git branch --merged "$DEFAULT_BRANCH" | grep -vE "^\*|^\s*(main|master|develop|dev)$" || true)
+if [[ -n "$merged_branches" ]]; then
+  count=$(echo "$merged_branches" | wc -l | tr -d ' ')
+  echo -e "${GREEN}▸ Removing $count merged branch(es):${NC}"
+  while IFS= read -r branch; do
+    branch=$(echo "$branch" | xargs)  # trim whitespace
+    [[ -z "$branch" ]] && continue
+    echo -e "    ${RED}✗ $branch${NC}"
+    git branch -d "$branch" --quiet 2>/dev/null || true
+  done <<< "$merged_branches"
+else
+  echo -e "${YELLOW}  ⚠ No merged branches to remove.${NC}"
+fi
+
+# Run garbage collection
+echo -e "${GREEN}▸ Running garbage collection...${NC}"
+git gc --quiet 2>/dev/null || true
+
+echo ""
+echo -e "${CYAN}  ✅  Repo is squeaky clean!${NC}"
+echo ""

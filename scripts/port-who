@@ -1,0 +1,30 @@
+#!/usr/bin/env bash
+# 🔍 port-who — find out who's using a port
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+if [[ $# -eq 0 ]]; then
+  echo -e "${YELLOW}Usage: port-who <port>${NC}"
+  echo -e "  Example: port-who 3000"
+  exit 1
+fi
+
+PORT="$1"
+
+echo ""
+echo -e "${CYAN}  🔍  Who's on port $PORT?${NC}"
+echo ""
+
+result=$(lsof -i :"$PORT" -P -n 2>/dev/null || true)
+
+if [[ -z "$result" ]]; then
+  echo -e "${GREEN}  Nobody! Port $PORT is free.${NC}"
+else
+  echo -e "${YELLOW}$result${NC}"
+fi
+echo ""
