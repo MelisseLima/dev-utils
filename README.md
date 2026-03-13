@@ -5,7 +5,7 @@ A collection of handy CLI scripts to speed up your dev workflow. Stop, clean, bu
 ## Installation
 
 ```bash
-git clone https://github.com/<your-username>/devutils.git
+git clone https://github.com/melisselima/devutils.git
 cd devutils
 ./install.sh
 ```
