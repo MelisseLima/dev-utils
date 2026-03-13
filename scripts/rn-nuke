@@ -75,30 +75,7 @@ step "Clearing Metro & temp caches..."
 rm -rf "$TMPDIR/react-"* "$TMPDIR/metro-"* "$TMPDIR/haste-"* 2>/dev/null || true
 rm -rf .metro-health-check-* 2>/dev/null || true
 
-# --- Reinstall dependencies ---
-step "Reinstalling dependencies..."
-if [[ -f "yarn.lock" ]]; then
-  yarn install
-elif [[ -f "pnpm-lock.yaml" ]]; then
-  pnpm install
-elif [[ -f "bun.lockb" || -f "bun.lock" ]]; then
-  bun install
-else
-  npm install
-fi
-
-# --- Reinstall Pods ---
-if [[ -d "ios" ]]; then
-  step "Reinstalling CocoaPods..."
-  if command -v bundle &>/dev/null && [[ -f "Gemfile" ]]; then
-    (cd ios && bundle exec pod install --repo-update)
-  elif command -v pod &>/dev/null; then
-    (cd ios && pod install --repo-update)
-  else
-    warn "CocoaPods not found — skipping pod install."
-  fi
-fi
-
 echo ""
 echo -e "${CYAN}  ✅  Nuclear clean complete! Fresh as new. ☢️${NC}"
+echo -e "${YELLOW}  Run your package manager install + rn-pod to set up again.${NC}"
 echo ""
