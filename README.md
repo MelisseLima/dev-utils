@@ -117,16 +117,44 @@ note --search auth               # find past notes about auth
 
 ---
 
-## Uninstall
+### React Native
 
-Remove the following line from your shell config (`~/.zshrc`, `~/.bashrc`, etc.):
+| Command | Description |
+|---------|-------------|
+| `rn-nuke` | Nuclear clean: kill Metro, clear Watchman, remove `node_modules`, `ios/Pods`, `android/build`, DerivedData, temp caches — then reinstall everything. |
+| `rn-pod [--clean]` | Install CocoaPods with `--repo-update`. Use `--clean` to wipe Pods and Podfile.lock first. Shows elapsed time. |
+| `rn-run <ios\|android> [flags]` | Smart launcher — auto-detects physical devices, picks simulator/emulator, supports `--device`, `--simulator`, `--release`, `--clean`. |
+| `rn-build <ios\|android> [flags]` | Build APK/AAB or iOS archive. Supports `--release` (default), `--debug`, `--clean`, `--apk`, `--aab`. |
+
+#### Examples
 
 ```bash
-# devutils
-export PATH="/path/to/devutils/scripts:$PATH"
+rn-nuke                          # full nuclear clean + reinstall
+rn-pod                           # pod install --repo-update
+rn-pod --clean                   # wipe pods first, then install
+rn-run ios                       # run on simulator (or device if connected)
+rn-run android --device          # force run on physical device
+rn-run ios --release --clean     # clean release run
+rn-build android                 # release AAB
+rn-build android --apk           # release APK
+rn-build ios --clean             # clean iOS archive
 ```
 
-Then delete the repo folder.
+---
+
+## Uninstall
+
+```bash
+./uninstall.sh
+```
+
+This removes the DevUtils PATH entry from your shell config. Then reload your shell:
+
+```bash
+source ~/.zshrc   # or ~/.bashrc / ~/.bash_profile
+```
+
+Optionally, delete the repo folder to fully remove everything.
 
 ---
 
@@ -144,6 +172,8 @@ Then delete the repo folder.
 - **Docker** (for Docker-related scripts)
 - **Git** (for git-related scripts)
 - **lsof** (pre-installed on macOS/Linux — used by `port-who` and `killport`)
+- **Xcode & CocoaPods** (for React Native iOS scripts)
+- **Android SDK & adb** (for React Native Android scripts)
 
 ## License
 

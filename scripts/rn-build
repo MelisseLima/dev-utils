@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# 📦 rn-build — build APK/AAB or IPA for React Native
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+step() { echo -e "${GREEN}▸ $1${NC}"; }
+warn() { echo -e "${YELLOW}  ⚠ $1${NC}"; }
+
+usage() {
+  echo -e "${YELLOW}Usage: rn-build <ios|android> [options]${NC}"
+  echo ""
+  echo "  Options:"
+  echo "    --release       Build in release mode (default)"
+  echo "    --debug         Build in debug mode"
+  echo "    --clean         Clean before building"
+  echo "    --aab           Android: build AAB instead of APK (default for release)"
+  echo "    --apk           Android: build APK"
+  echo ""
+  echo "  Examples:"
+  echo "    rn-build android               # release AAB"
+  echo "    rn-build android --apk         # release APK"
+  echo "    rn-build android --debug --apk # debug APK"
+  echo "    rn-build ios                   # archive iOS build"
+  echo "    rn-build ios --clean           # clean + build"
+  exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+fi
+
+PLATFORM="$1"
+shift
+
+MODE="release"
+CLEAN_FLAG=""
+ANDROID_FORMAT="aab"  # default to AAB for release
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --release) MODE="release" ;;
+    --debug)   MODE="debug" ;;
+    --clean)   CLEAN_FLAG="true" ;;
+    --aab)     ANDROID_FORMAT="aab" ;;
+    --apk)     ANDROID_FORMAT="apk" ;;
+    *)         echo -e "${RED}  ✗ Unknown option: $1${NC}"; usage ;;
+  esac
+  shift
+done
+
+echo ""
+echo -e "${CYAN}  📦  R N   B U I L D  —  $PLATFORM ($MODE)${NC}"
+echo ""
+
+START_TIME=$(date +%s)
+
+case "$PLATFORM" in
+  android)
+    if [[ ! -d "android" ]]; then
+      echo -e "${RED}  ✗ No android/ directory found.${NC}"
+      exit 1
+    fi
+
+    cd android
+
+    if [[ "$CLEAN_FLAG" == "true" ]]; then
+      step "Cleaning Android build..."
+      ./gradlew clean
+    fi
+
+    if [[ "$MODE" == "release" ]]; then
+      if [[ "$ANDROID_FORMAT" == "aab" ]]; then
+        step "Building release AAB..."
+        ./gradlew bundleRelease
+
+        OUTPUT=$(find app/build -name "*.aab" -type f 2>/dev/null | head -1)
+      else
+        step "Building release APK..."
+        ./gradlew assembleRelease
+
+        OUTPUT=$(find app/build -name "*.apk" -path "*/release/*" -type f 2>/dev/null | head -1)
+      fi
+    else
+      step "Building debug APK..."
+      ./gradlew assembleDebug
+
+      OUTPUT=$(find app/build -name "*.apk" -path "*/debug/*" -type f 2>/dev/null | head -1)
+    fi
+
+    cd ..
+
+    END_TIME=$(date +%s)
+    ELAPSED=$((END_TIME - START_TIME))
+
+    echo ""
+    if [[ -n "$OUTPUT" ]]; then
+      SIZE=$(du -sh "android/$OUTPUT" 2>/dev/null | cut -f1 || echo "?")
+      echo -e "${GREEN}  ✓ Build output: android/$OUTPUT ($SIZE)${NC}"
+    else
+      echo -e "${GREEN}  ✓ Build completed.${NC}"
+    fi
+    echo -e "${CYAN}  ✅  Android build done in ${ELAPSED}s${NC}"
+    ;;
+
+  ios)
+    if [[ ! -d "ios" ]]; then
+      echo -e "${RED}  ✗ No ios/ directory found.${NC}"
+      exit 1
+    fi
+
+    # Detect workspace and scheme
+    WORKSPACE=$(ls ios/*.xcworkspace 2>/dev/null | head -1)
+    if [[ -z "$WORKSPACE" ]]; then
+      echo -e "${RED}  ✗ No .xcworkspace found in ios/.${NC}"
+      exit 1
+    fi
+
+    SCHEME=$(xcodebuild -workspace "$WORKSPACE" -list 2>/dev/null | awk '/Schemes:/,/^$/' | grep -v "Schemes:" | head -1 | xargs || echo "")
+    if [[ -z "$SCHEME" ]]; then
+      SCHEME=$(basename "$WORKSPACE" .xcworkspace)
+    fi
+
+    step "Workspace: $WORKSPACE"
+    step "Scheme: $SCHEME"
+
+    if [[ "$CLEAN_FLAG" == "true" ]]; then
+      step "Cleaning iOS build..."
+      xcodebuild clean -workspace "$WORKSPACE" -scheme "$SCHEME" -quiet 2>/dev/null || true
+      rm -rf ios/build 2>/dev/null || true
+    fi
+
+    BUILD_DIR="ios/build"
+    mkdir -p "$BUILD_DIR"
+
+    if [[ "$MODE" == "release" ]]; then
+      step "Building iOS release (archive)..."
+      ARCHIVE_PATH="$BUILD_DIR/$SCHEME.xcarchive"
+
+      xcodebuild archive \
+        -workspace "$WORKSPACE" \
+        -scheme "$SCHEME" \
+        -configuration Release \
+        -archivePath "$ARCHIVE_PATH" \
+        -destination "generic/platform=iOS" \
+        CODE_SIGN_IDENTITY="" \
+        CODE_SIGNING_ALLOWED=NO \
+        -quiet 2>&1 || {
+          warn "Archive failed with unsigned build. You may need to configure signing."
+          warn "Try: open $WORKSPACE and set up signing in Xcode."
+        }
+
+      if [[ -d "$ARCHIVE_PATH" ]]; then
+        echo -e "${GREEN}  ✓ Archive: $ARCHIVE_PATH${NC}"
+      fi
+    else
+      step "Building iOS debug..."
+      xcodebuild build \
+        -workspace "$WORKSPACE" \
+        -scheme "$SCHEME" \
+        -configuration Debug \
+        -destination "platform=iOS Simulator,name=iPhone 16" \
+        -derivedDataPath "$BUILD_DIR" \
+        -quiet 2>&1
+
+      echo -e "${GREEN}  ✓ Debug build output in $BUILD_DIR/${NC}"
+    fi
+
+    END_TIME=$(date +%s)
+    ELAPSED=$((END_TIME - START_TIME))
+
+    echo ""
+    echo -e "${CYAN}  ✅  iOS build done in ${ELAPSED}s${NC}"
+    ;;
+
+  *)
+    echo -e "${RED}  ✗ Unknown platform: $PLATFORM${NC}"
+    usage
+    ;;
+esac
+
+echo ""

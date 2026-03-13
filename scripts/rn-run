@@ -1,0 +1,172 @@
+#!/usr/bin/env bash
+# 🚀 rn-run — smart React Native launcher for iOS/Android
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+NC='\033[0m'
+
+step() { echo -e "${GREEN}▸ $1${NC}"; }
+warn() { echo -e "${YELLOW}  ⚠ $1${NC}"; }
+
+usage() {
+  echo -e "${YELLOW}Usage: rn-run <ios|android> [options]${NC}"
+  echo ""
+  echo "  Options:"
+  echo "    --device         Force run on physical device"
+  echo "    --simulator      Force run on simulator/emulator"
+  echo "    --release        Run in release mode"
+  echo "    --clean          Clean build before running"
+  echo ""
+  echo "  Examples:"
+  echo "    rn-run ios"
+  echo "    rn-run android --device"
+  echo "    rn-run ios --release --clean"
+  exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+fi
+
+PLATFORM="$1"
+shift
+
+DEVICE_FLAG=""
+RELEASE_FLAG=""
+CLEAN_FLAG=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --device)     DEVICE_FLAG="true" ;;
+    --simulator)  DEVICE_FLAG="false" ;;
+    --release)    RELEASE_FLAG="true" ;;
+    --clean)      CLEAN_FLAG="true" ;;
+    *)            echo -e "${RED}  ✗ Unknown option: $1${NC}"; usage ;;
+  esac
+  shift
+done
+
+echo ""
+echo -e "${CYAN}  🚀  R N   R U N  —  $PLATFORM${NC}"
+echo ""
+
+# --- Detect package manager ---
+if [[ -f "yarn.lock" ]]; then
+  PM="yarn"
+elif [[ -f "pnpm-lock.yaml" ]]; then
+  PM="pnpm"
+elif [[ -f "bun.lockb" || -f "bun.lock" ]]; then
+  PM="bun"
+else
+  PM="npx"
+fi
+
+# --- Build the command ---
+CMD_ARGS=()
+
+case "$PLATFORM" in
+  ios)
+    if [[ ! -d "ios" ]]; then
+      echo -e "${RED}  ✗ No ios/ directory found.${NC}"
+      exit 1
+    fi
+
+    # Check if physical iOS device is connected
+    if [[ "$DEVICE_FLAG" == "true" ]]; then
+      CMD_ARGS+=(--device)
+      step "Targeting physical device..."
+    elif [[ "$DEVICE_FLAG" == "false" ]]; then
+      step "Targeting simulator..."
+    else
+      # Auto-detect: check for connected iOS devices
+      if command -v xcrun &>/dev/null; then
+        connected_devices=$(xcrun xctrace list devices 2>/dev/null | grep -v "Simulator" | grep -c "iPhone\|iPad" || echo "0")
+        if [[ "$connected_devices" -gt 0 ]]; then
+          step "Physical iOS device detected — running on device..."
+          CMD_ARGS+=(--device)
+        else
+          step "No physical device — running on simulator..."
+        fi
+      fi
+    fi
+
+    if [[ "$RELEASE_FLAG" == "true" ]]; then
+      CMD_ARGS+=(--mode Release)
+      step "Mode: Release"
+    fi
+
+    if [[ "$CLEAN_FLAG" == "true" ]]; then
+      step "Cleaning iOS build..."
+      rm -rf ios/build 2>/dev/null || true
+      xcodebuild clean -workspace ios/*.xcworkspace -scheme "$(ls ios/*.xcworkspace | head -1 | xargs basename | sed 's/.xcworkspace//')" 2>/dev/null || true
+    fi
+
+    step "Running: $PM react-native run-ios ${CMD_ARGS[*]:-}"
+    if [[ "$PM" == "npx" ]]; then
+      npx react-native run-ios "${CMD_ARGS[@]}" 2>&1
+    else
+      $PM react-native run-ios "${CMD_ARGS[@]}" 2>&1
+    fi
+    ;;
+
+  android)
+    if [[ ! -d "android" ]]; then
+      echo -e "${RED}  ✗ No android/ directory found.${NC}"
+      exit 1
+    fi
+
+    # Check if physical Android device is connected
+    if [[ "$DEVICE_FLAG" == "true" ]]; then
+      step "Targeting physical device..."
+    elif [[ "$DEVICE_FLAG" == "false" ]]; then
+      step "Targeting emulator..."
+    else
+      if command -v adb &>/dev/null; then
+        connected=$(adb devices 2>/dev/null | grep -c "device$" || echo "0")
+        if [[ "$connected" -gt 0 ]]; then
+          step "Physical Android device detected..."
+        else
+          # Try to boot emulator if none running
+          running_emus=$(adb devices 2>/dev/null | grep -c "emulator" || echo "0")
+          if [[ "$running_emus" -eq 0 ]]; then
+            if command -v emulator &>/dev/null; then
+              avd=$(emulator -list-avds 2>/dev/null | head -1)
+              if [[ -n "$avd" ]]; then
+                step "Starting emulator: $avd..."
+                emulator -avd "$avd" -no-snapshot-load &>/dev/null &
+                step "Waiting for emulator to boot..."
+                adb wait-for-device 2>/dev/null || true
+                sleep 5
+              fi
+            fi
+          fi
+        fi
+      fi
+    fi
+
+    if [[ "$RELEASE_FLAG" == "true" ]]; then
+      CMD_ARGS+=(--mode release)
+      step "Mode: Release"
+    fi
+
+    if [[ "$CLEAN_FLAG" == "true" ]]; then
+      step "Cleaning Android build..."
+      (cd android && ./gradlew clean 2>/dev/null || true)
+    fi
+
+    step "Running: $PM react-native run-android ${CMD_ARGS[*]:-}"
+    if [[ "$PM" == "npx" ]]; then
+      npx react-native run-android "${CMD_ARGS[@]}" 2>&1
+    else
+      $PM react-native run-android "${CMD_ARGS[@]}" 2>&1
+    fi
+    ;;
+
+  *)
+    echo -e "${RED}  ✗ Unknown platform: $PLATFORM (use ios or android)${NC}"
+    usage
+    ;;
+esac
