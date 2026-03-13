@@ -34,15 +34,12 @@ if [[ -z "$DEFAULT_BRANCH" ]]; then
   fi
 fi
 
-echo -e "${GREEN}▸ Switching to $DEFAULT_BRANCH...${NC}"
-git checkout "$DEFAULT_BRANCH" --quiet
+echo -e "${GREEN}▸ Fetching latest from origin...${NC}"
+git fetch origin --quiet
 
-echo -e "${GREEN}▸ Pulling latest changes...${NC}"
-git pull --quiet
-
-echo -e "${GREEN}▸ Creating branch: $BRANCH_NAME${NC}"
-git checkout -b "$BRANCH_NAME"
+echo -e "${GREEN}▸ Creating branch '$BRANCH_NAME' from origin/$DEFAULT_BRANCH...${NC}"
+git checkout -b "$BRANCH_NAME" "origin/$DEFAULT_BRANCH"
 
 echo ""
-echo -e "${CYAN}  ✅  Fresh branch '$BRANCH_NAME' ready to go!${NC}"
+echo -e "${CYAN}  ✅  Fresh branch '$BRANCH_NAME' based on origin/$DEFAULT_BRANCH — ready to go!${NC}"
 echo ""
