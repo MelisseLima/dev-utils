@@ -121,6 +121,7 @@ note --search auth               # find past notes about auth
 
 | Command | Description |
 |---------|-------------|
+| `rn-init <Name> [flags]` | Scaffold a bare React Native project (no Expo) with NativeWind (Tailwind CSS), pre-configured Metro, Babel, and TypeScript. Supports `--yarn`, `--pnpm`, `--skip-pod`. |
 | `rn-nuke` | Nuclear clean: kill Metro, clear Watchman, remove `node_modules`, `ios/Pods`, `android/build`, DerivedData, temp caches — then reinstall everything. |
 | `rn-pod [--clean]` | Install CocoaPods with `--repo-update`. Use `--clean` to wipe Pods and Podfile.lock first. Shows elapsed time. |
 | `rn-run <ios\|android> [flags]` | Smart launcher — auto-detects physical devices, picks simulator/emulator, supports `--device`, `--simulator`, `--release`, `--clean`. |
@@ -129,6 +130,9 @@ note --search auth               # find past notes about auth
 #### Examples
 
 ```bash
+rn-init MyApp                    # scaffold bare RN + NativeWind (Tailwind)
+rn-init MyApp --yarn             # use yarn instead of npm
+rn-init MyApp --skip-pod         # skip pod install
 rn-nuke                          # full nuclear clean + reinstall
 rn-pod                           # pod install --repo-update
 rn-pod --clean                   # wipe pods first, then install

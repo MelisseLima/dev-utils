@@ -1,0 +1,226 @@
+#!/usr/bin/env bash
+# 🏗️ rn-init — scaffold a bare React Native app with NativeWind (Tailwind CSS)
+set -euo pipefail
+
+CYAN='\033[0;36m'
+GREEN='\033[0;32m'
+YELLOW='\033[1;33m'
+RED='\033[0;31m'
+BOLD='\033[1m'
+NC='\033[0m'
+
+step()  { echo -e "${GREEN}▸ $1${NC}"; }
+warn()  { echo -e "${YELLOW}  ⚠ $1${NC}"; }
+fail()  { echo -e "${RED}  ✗ $1${NC}"; exit 1; }
+
+usage() {
+  echo -e "${YELLOW}Usage: rn-init <ProjectName> [options]${NC}"
+  echo ""
+  echo "  Scaffolds a bare React Native (no Expo) project with NativeWind (Tailwind CSS)."
+  echo ""
+  echo "  Options:"
+  echo "    --skip-pod       Skip running pod install (iOS)"
+  echo "    --yarn           Use Yarn instead of npm"
+  echo "    --pnpm           Use pnpm instead of npm"
+  echo ""
+  echo "  Examples:"
+  echo "    rn-init MyApp"
+  echo "    rn-init AwesomeApp --yarn"
+  echo "    rn-init CoolApp --skip-pod"
+  exit 1
+}
+
+if [[ $# -eq 0 ]]; then
+  usage
+fi
+
+PROJECT_NAME="$1"
+shift
+
+PKG_MANAGER="npm"
+PKG_INSTALL="npm install"
+PKG_RUN="npx"
+SKIP_POD=""
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --skip-pod)  SKIP_POD="true" ;;
+    --yarn)      PKG_MANAGER="yarn"; PKG_INSTALL="yarn add"; PKG_RUN="yarn" ;;
+    --pnpm)      PKG_MANAGER="pnpm"; PKG_INSTALL="pnpm add"; PKG_RUN="pnpm" ;;
+    --help|-h)   usage ;;
+    *)           echo -e "${RED}  ✗ Unknown option: $1${NC}"; usage ;;
+  esac
+  shift
+done
+
+# --- Validate project name ---
+if [[ ! "$PROJECT_NAME" =~ ^[A-Z][a-zA-Z0-9]*$ ]]; then
+  fail "Project name must be PascalCase (start with uppercase, alphanumeric only). Got: $PROJECT_NAME"
+fi
+
+if [[ -d "$PROJECT_NAME" ]]; then
+  fail "Directory '$PROJECT_NAME' already exists."
+fi
+
+echo ""
+echo -e "${CYAN}  🏗️  R N   I N I T${NC}"
+echo -e "${YELLOW}  Scaffolding ${BOLD}$PROJECT_NAME${NC}${YELLOW} — bare RN + NativeWind (Tailwind)${NC}"
+echo ""
+
+START_TIME=$(date +%s)
+
+# =============================================================
+# 1. Create the React Native project (bare, no Expo)
+# =============================================================
+step "Creating bare React Native project..."
+npx @react-native-community/cli init "$PROJECT_NAME" --skip-install
+
+cd "$PROJECT_NAME"
+
+# =============================================================
+# 2. Install dependencies
+# =============================================================
+step "Installing base dependencies with $PKG_MANAGER..."
+$PKG_INSTALL
+
+step "Installing NativeWind & Tailwind CSS..."
+$PKG_INSTALL nativewind tailwindcss
+
+step "Installing NativeWind peer dependencies..."
+$PKG_INSTALL react-native-reanimated react-native-safe-area-context
+
+# =============================================================
+# 3. Create tailwind.config.js
+# =============================================================
+step "Creating tailwind.config.js..."
+cat > tailwind.config.js << 'EOF'
+/** @type {import('tailwindcss').Config} */
+module.exports = {
+  content: [
+    './App.{js,jsx,ts,tsx}',
+    './src/**/*.{js,jsx,ts,tsx}',
+  ],
+  presets: [require('nativewind/preset')],
+  theme: {
+    extend: {},
+  },
+  plugins: [],
+};
+EOF
+
+# =============================================================
+# 4. Create global.css
+# =============================================================
+step "Creating global.css..."
+cat > global.css << 'EOF'
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+EOF
+
+# =============================================================
+# 5. Update metro.config.js for NativeWind CSS support
+# =============================================================
+step "Configuring Metro for NativeWind..."
+cat > metro.config.js << 'EOF'
+const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
+const {withNativeWind} = require('nativewind/metro');
+
+const config = mergeConfig(getDefaultConfig(__dirname), {});
+
+module.exports = withNativeWind(config, {input: './global.css'});
+EOF
+
+# =============================================================
+# 6. Update babel.config.js
+# =============================================================
+step "Configuring Babel for NativeWind..."
+cat > babel.config.js << 'EOF'
+module.exports = {
+  presets: ['module:@react-native/babel-preset', 'nativewind/babel'],
+};
+EOF
+
+# =============================================================
+# 7. Create nativewind-env.d.ts for TypeScript support
+# =============================================================
+step "Adding NativeWind TypeScript declarations..."
+cat > nativewind-env.d.ts << 'EOF'
+/// <reference types="nativewind/types" />
+EOF
+
+# =============================================================
+# 8. Create src/ directory structure
+# =============================================================
+step "Setting up src/ directory structure..."
+mkdir -p src/components src/screens src/utils
+
+# =============================================================
+# 9. Replace App.tsx with a NativeWind demo
+# =============================================================
+step "Writing App.tsx with NativeWind example..."
+
+# Remove any existing App files
+rm -f App.tsx App.jsx App.js
+
+cat > App.tsx << 'APPEOF'
+import React from 'react';
+import {SafeAreaView, Text, View} from 'react-native';
+import './global.css';
+
+function App(): React.JSX.Element {
+  return (
+    <SafeAreaView className="flex-1 bg-slate-900">
+      <View className="flex-1 items-center justify-center px-6">
+        <Text className="text-4xl font-bold text-white mb-4">
+          🏗️ Ready to build!
+        </Text>
+        <Text className="text-lg text-slate-300 text-center leading-7">
+          Bare React Native + NativeWind{'\n'}
+          Tailwind CSS is good to go.
+        </Text>
+        <View className="mt-8 bg-indigo-600 rounded-2xl px-6 py-3">
+          <Text className="text-white font-semibold text-base">
+            No Expo. Full control.
+          </Text>
+        </View>
+      </View>
+    </SafeAreaView>
+  );
+}
+
+export default App;
+APPEOF
+
+# =============================================================
+# 10. iOS — pod install
+# =============================================================
+if [[ -d "ios" && "$SKIP_POD" != "true" ]]; then
+  if command -v pod &>/dev/null; then
+    step "Running pod install..."
+    cd ios && pod install && cd ..
+  else
+    warn "CocoaPods not installed — skipping pod install."
+    warn "Run 'cd ios && pod install' manually."
+  fi
+elif [[ "$SKIP_POD" == "true" ]]; then
+  warn "Skipping pod install (--skip-pod)."
+fi
+
+END_TIME=$(date +%s)
+ELAPSED=$((END_TIME - START_TIME))
+
+echo ""
+echo -e "${CYAN}  ✅  $PROJECT_NAME scaffolded in ${ELAPSED}s!${NC}"
+echo ""
+echo -e "${GREEN}  What you got:${NC}"
+echo -e "    • Bare React Native (no Expo)"
+echo -e "    • NativeWind v4 + Tailwind CSS"
+echo -e "    • Metro configured for CSS"
+echo -e "    • TypeScript support"
+echo -e "    • src/ directory (components, screens, utils)"
+echo ""
+echo -e "${YELLOW}  Next steps:${NC}"
+echo -e "    cd $PROJECT_NAME"
+echo -e "    rn-run ios          # or rn-run android"
+echo ""
