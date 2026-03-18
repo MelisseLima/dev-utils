@@ -64,6 +64,28 @@ else
   PM="npx"
 fi
 
+# --- Yarn Berry PnP check ---
+# React Native doesn't work with Yarn PnP (scripts inside .zip can't be spawned).
+# If Yarn Berry is detected without nodeLinker: node-modules, fix it automatically.
+if [[ "$PM" == "yarn" ]]; then
+  YARN_VERSION=$(yarn --version 2>/dev/null || echo "1")
+  if [[ "$YARN_VERSION" =~ ^[2-9] || "$YARN_VERSION" =~ ^[0-9][0-9] ]]; then
+    # Yarn Berry (v2+) detected
+    if [[ ! -d "node_modules" ]]; then
+      warn "Yarn Berry PnP detected — React Native requires node_modules."
+      step "Adding nodeLinker: node-modules to .yarnrc.yml..."
+      echo 'nodeLinker: node-modules' >> .yarnrc.yml
+      step "Re-running yarn install..."
+      yarn install
+      echo ""
+    fi
+  fi
+fi
+
+# --- Build the CLI command ---
+# Use the package manager's runner so local bin resolution works correctly.
+RN_CLI=("$PM" react-native)
+
 # --- Build the command ---
 CMD_ARGS=()
 
@@ -104,12 +126,8 @@ case "$PLATFORM" in
       xcodebuild clean -workspace ios/*.xcworkspace -scheme "$(ls ios/*.xcworkspace | head -1 | xargs basename | sed 's/.xcworkspace//')" 2>/dev/null || true
     fi
 
-    step "Running: $PM react-native run-ios ${CMD_ARGS[*]:-}"
-    if [[ "$PM" == "npx" ]]; then
-      npx react-native run-ios "${CMD_ARGS[@]}" 2>&1
-    else
-      $PM react-native run-ios "${CMD_ARGS[@]}" 2>&1
-    fi
+    step "Running: ${RN_CLI[*]} run-ios ${CMD_ARGS[*]:-}"
+    "${RN_CLI[@]}" run-ios "${CMD_ARGS[@]}" 2>&1
     ;;
 
   android)
@@ -157,12 +175,8 @@ case "$PLATFORM" in
       (cd android && ./gradlew clean 2>/dev/null || true)
     fi
 
-    step "Running: $PM react-native run-android ${CMD_ARGS[*]:-}"
-    if [[ "$PM" == "npx" ]]; then
-      npx react-native run-android "${CMD_ARGS[@]}" 2>&1
-    else
-      $PM react-native run-android "${CMD_ARGS[@]}" 2>&1
-    fi
+    step "Running: ${RN_CLI[*]} run-android ${CMD_ARGS[*]:-}"
+    "${RN_CLI[@]}" run-android "${CMD_ARGS[@]}" 2>&1
     ;;
 
   *)

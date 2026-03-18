@@ -78,13 +78,24 @@ npx @react-native-community/cli init "$PROJECT_NAME" --skip-install
 cd "$PROJECT_NAME"
 
 # =============================================================
+# 1b. Ensure Yarn Berry uses node_modules (RN doesn't support PnP)
+# =============================================================
+if [[ "$PKG_MANAGER" == "yarn" ]]; then
+  YARN_VERSION=$(yarn --version 2>/dev/null || echo "1")
+  if [[ "$YARN_VERSION" =~ ^[2-9] || "$YARN_VERSION" =~ ^[0-9][0-9] ]]; then
+    step "Yarn Berry detected — setting nodeLinker: node-modules..."
+    echo 'nodeLinker: node-modules' >> .yarnrc.yml
+  fi
+fi
+
+# =============================================================
 # 2. Install dependencies
 # =============================================================
 step "Installing base dependencies with $PKG_MANAGER..."
 $PKG_INSTALL
 
-step "Installing NativeWind & Tailwind CSS..."
-$PKG_INSTALL nativewind tailwindcss
+step "Installing NativeWind & Tailwind CSS v3 (NativeWind requires v3)..."
+$PKG_INSTALL nativewind "tailwindcss@^3"
 
 step "Installing NativeWind peer dependencies..."
 $PKG_INSTALL react-native-reanimated react-native-safe-area-context
