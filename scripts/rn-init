@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# 🏗️ rn-init — scaffold a bare React Native app with NativeWind (Tailwind CSS)
+# 🏗️ rn-init — scaffold a bare React Native app (no Expo)
 set -euo pipefail
 
 CYAN='\033[0;36m'
@@ -16,7 +16,7 @@ fail()  { echo -e "${RED}  ✗ $1${NC}"; exit 1; }
 usage() {
   echo -e "${YELLOW}Usage: rn-init <ProjectName> [options]${NC}"
   echo ""
-  echo "  Scaffolds a bare React Native (no Expo) project with NativeWind (Tailwind CSS)."
+  echo "  Scaffolds a bare React Native (no Expo) project."
   echo ""
   echo "  Options:"
   echo "    --skip-pod       Skip running pod install (iOS)"
@@ -64,7 +64,7 @@ fi
 
 echo ""
 echo -e "${CYAN}  🏗️  R N   I N I T${NC}"
-echo -e "${YELLOW}  Scaffolding ${BOLD}$PROJECT_NAME${NC}${YELLOW} — bare RN + NativeWind (Tailwind)${NC}"
+echo -e "${YELLOW}  Scaffolding ${BOLD}$PROJECT_NAME${NC}${YELLOW} — bare React Native${NC}"
 echo ""
 
 START_TIME=$(date +%s)
@@ -94,111 +94,61 @@ fi
 step "Installing base dependencies with $PKG_MANAGER..."
 $PKG_INSTALL
 
-step "Installing NativeWind & Tailwind CSS v3 (NativeWind requires v3)..."
-$PKG_INSTALL nativewind "tailwindcss@^3"
-
-step "Installing NativeWind peer dependencies..."
-$PKG_INSTALL react-native-reanimated react-native-safe-area-context
-
 # =============================================================
-# 3. Create tailwind.config.js
-# =============================================================
-step "Creating tailwind.config.js..."
-cat > tailwind.config.js << 'EOF'
-/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    './App.{js,jsx,ts,tsx}',
-    './src/**/*.{js,jsx,ts,tsx}',
-  ],
-  presets: [require('nativewind/preset')],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-};
-EOF
-
-# =============================================================
-# 4. Create global.css
-# =============================================================
-step "Creating global.css..."
-cat > global.css << 'EOF'
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
-EOF
-
-# =============================================================
-# 5. Update metro.config.js for NativeWind CSS support
-# =============================================================
-step "Configuring Metro for NativeWind..."
-cat > metro.config.js << 'EOF'
-const {getDefaultConfig, mergeConfig} = require('@react-native/metro-config');
-const {withNativeWind} = require('nativewind/metro');
-
-const config = mergeConfig(getDefaultConfig(__dirname), {});
-
-module.exports = withNativeWind(config, {input: './global.css'});
-EOF
-
-# =============================================================
-# 6. Update babel.config.js
-# =============================================================
-step "Configuring Babel for NativeWind..."
-cat > babel.config.js << 'EOF'
-module.exports = {
-  presets: ['module:@react-native/babel-preset', 'nativewind/babel'],
-};
-EOF
-
-# =============================================================
-# 7. Create nativewind-env.d.ts for TypeScript support
-# =============================================================
-step "Adding NativeWind TypeScript declarations..."
-cat > nativewind-env.d.ts << 'EOF'
-/// <reference types="nativewind/types" />
-EOF
-
-# =============================================================
-# 8. Create src/ directory structure
+# 3. Create src/ directory structure
 # =============================================================
 step "Setting up src/ directory structure..."
 mkdir -p src/components src/screens src/utils
 
 # =============================================================
-# 9. Replace App.tsx with a NativeWind demo
+# 4. Replace App.tsx with a clean starter
 # =============================================================
-step "Writing App.tsx with NativeWind example..."
+step "Writing App.tsx..."
 
 # Remove any existing App files
 rm -f App.tsx App.jsx App.js
 
 cat > App.tsx << 'APPEOF'
 import React from 'react';
-import {SafeAreaView, Text, View} from 'react-native';
-import './global.css';
+import {SafeAreaView, StyleSheet, Text, View} from 'react-native';
 
 function App(): React.JSX.Element {
   return (
-    <SafeAreaView className="flex-1 bg-slate-900">
-      <View className="flex-1 items-center justify-center px-6">
-        <Text className="text-4xl font-bold text-white mb-4">
-          🏗️ Ready to build!
+    <SafeAreaView style={styles.container}>
+      <View style={styles.content}>
+        <Text style={styles.title}>🏗️ Ready to build!</Text>
+        <Text style={styles.subtitle}>
+          Bare React Native — no Expo, full control.
         </Text>
-        <Text className="text-lg text-slate-300 text-center leading-7">
-          Bare React Native + NativeWind{'\n'}
-          Tailwind CSS is good to go.
-        </Text>
-        <View className="mt-8 bg-indigo-600 rounded-2xl px-6 py-3">
-          <Text className="text-white font-semibold text-base">
-            No Expo. Full control.
-          </Text>
-        </View>
       </View>
     </SafeAreaView>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: '#0f172a',
+  },
+  content: {
+    flex: 1,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 24,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: 'bold',
+    color: '#ffffff',
+    marginBottom: 16,
+  },
+  subtitle: {
+    fontSize: 18,
+    color: '#cbd5e1',
+    textAlign: 'center',
+    lineHeight: 28,
+  },
+});
 
 export default App;
 APPEOF
@@ -226,8 +176,6 @@ echo -e "${CYAN}  ✅  $PROJECT_NAME scaffolded in ${ELAPSED}s!${NC}"
 echo ""
 echo -e "${GREEN}  What you got:${NC}"
 echo -e "    • Bare React Native (no Expo)"
-echo -e "    • NativeWind v4 + Tailwind CSS"
-echo -e "    • Metro configured for CSS"
 echo -e "    • TypeScript support"
 echo -e "    • src/ directory (components, screens, utils)"
 echo ""

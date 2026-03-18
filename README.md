@@ -28,7 +28,7 @@ That's it. All commands are now available globally.
 
 | Command | Description |
 |---------|-------------|
-| `good-morning` | Stop **all** Docker containers, remove images, volumes, networks, and run a full system prune. A clean slate. |
+| `good-morning` | Prune unused Docker images. Use `--hard` to stop **all** containers, remove images, volumes, networks, and full system prune. |
 | `dockerup [dir ...]` | Find `docker-compose.yml` files and spin up services. Pass project directories as arguments or run in the current directory. |
 | `port-who <port>` | Show which process is using a specific port. |
 | `killport <port> [...]` | Kill whatever is running on one or more ports. |
@@ -36,7 +36,8 @@ That's it. All commands are now available globally.
 #### Examples
 
 ```bash
-good-morning                     # nuke all Docker resources
+good-morning                     # remove unused Docker images
+good-morning --hard              # nuke all Docker resources
 dockerup ~/projects/api          # spin up a specific project
 port-who 3000                    # who's on port 3000?
 killport 3000 8080               # free up ports 3000 and 8080
@@ -121,7 +122,7 @@ note --search auth               # find past notes about auth
 
 | Command | Description |
 |---------|-------------|
-| `rn-init <Name> [flags]` | Scaffold a bare React Native project (no Expo) with NativeWind (Tailwind CSS), pre-configured Metro, Babel, and TypeScript. Supports `--yarn`, `--pnpm`, `--skip-pod`. |
+| `rn-init <Name> [flags]` | Scaffold a bare React Native project (no Expo) with TypeScript. Supports `--yarn`, `--pnpm`, `--skip-pod`. |
 | `rn-nuke` | Nuclear clean: kill Metro, clear Watchman, remove `node_modules`, `ios/Pods`, `android/build`, DerivedData, temp caches — then reinstall everything. |
 | `rn-pod [--clean]` | Install CocoaPods with `--repo-update`. Use `--clean` to wipe Pods and Podfile.lock first. Shows elapsed time. |
 | `rn-run <ios\|android> [flags]` | Smart launcher — auto-detects physical devices, picks simulator/emulator, supports `--device`, `--simulator`, `--release`, `--clean`. |
@@ -130,7 +131,7 @@ note --search auth               # find past notes about auth
 #### Examples
 
 ```bash
-rn-init MyApp                    # scaffold bare RN + NativeWind (Tailwind)
+rn-init MyApp                    # scaffold bare RN project
 rn-init MyApp --yarn             # use yarn instead of npm
 rn-init MyApp --skip-pod         # skip pod install
 rn-nuke                          # full nuclear clean + reinstall
